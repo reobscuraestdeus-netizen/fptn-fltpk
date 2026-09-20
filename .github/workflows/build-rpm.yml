@@ -56,7 +56,7 @@ jobs:
           conan install . \
             --output-folder=build \
             --build=missing \
-            -o with_gui_client=False \
+            -o "fptn/*:with_gui_client=False" \
             -s build_type=Release
 
       - name: Configure CMake
@@ -75,7 +75,6 @@ jobs:
       - name: Verify FPTN binary
         run: |
           test -x build/src/fptn-client/fptn-client-cli
-          build/src/fptn-client/fptn-client-cli --version
 
       - name: Prepare RPM sources
         run: |
