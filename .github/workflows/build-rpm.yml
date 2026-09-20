@@ -15,9 +15,6 @@ jobs:
       image: fedora:44
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Install system dependencies
         run: |
           dnf -y update
@@ -28,6 +25,7 @@ jobs:
             cmake \
             ninja-build \
             git \
+            nodejs \
             python3 \
             python3-pip \
             rpm-build \
@@ -37,7 +35,10 @@ jobs:
             net-tools \
             e2fsprogs \
             perl
-
+            
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: Install Conan
         run: |
           python3 -m venv /tmp/conan-venv
