@@ -1,0 +1,29 @@
+[Unit]
+Description=FPTN Client Service
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/fptn-client/client.conf
+ExecStart=/usr/bin/fptn-client-cli \
+    --access-token "${ACCESS_TOKEN}" \
+    --out-network-interface "${NETWORK_INTERFACE}" \
+    --gateway-ip "${GATEWAY_IP}" \
+    --gateway-ipv6 "${GATEWAY_IPv6}" \
+    --sni "${SNI}" \
+    --mtu-size=${MTU_SIZE} \
+    --bypass-method "${BYPASS_METHOD}" \
+    --enable-ad-block=${ENABLE_AD_BLOCK} \
+    --blacklist-domains "${BLACKLIST_DOMAINS}" \
+    --enable-split-tunnel=${ENABLE_SPLIT_TUNNEL} \
+    --split-tunnel-mode "${SPLIT_TUNNEL_MODE}" \
+    --split-tunnel-domains "${SPLIT_TUNNEL_DOMAINS}" \
+    --exclude-tunnel-networks "${EXCLUDE_TUNNEL_NETWORKS}" \
+    --include-tunnel-networks "${INCLUDE_TUNNEL_NETWORKS}" \
+    --preferred-server "${PREFERRED_SERVER}"
+ExecStopPost=/usr/sbin/fptn-resolv-heal
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
