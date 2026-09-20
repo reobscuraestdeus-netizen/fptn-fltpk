@@ -1,0 +1,110 @@
+name: Build FPTN RPM
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+
+    container:
+      image: fedora:44
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          dnf -y update
+          dnf -y install \
+            gcc \
+            gcc-c++ \
+            make \
+            cmake \
+            ninja-build \
+            git \
+            python3 \
+            python3-pip \
+            rpm-build \
+            systemd-rpm-macros \
+            iproute \
+            iptables-nft \
+            net-tools \
+            e2fsprogs \
+            perl
+
+      - name: Install Conan
+        run: |
+          python3 -m venv /tmp/conan-venv
+          /tmp/conan-venv/bin/pip install --upgrade pip
+          /tmp/conan-venv/bin/pip install conan==2.24.0
+          echo "/tmp/conan-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Detect Conan profile
+        run: |
+          conan profile detect --force
+
+      - name: Install Conan dependencies
+        env:
+          FPTN_VERSION: 0.4.5
+        run: |
+          conan install . \
+            --output-folder=build \
+            --build=missing \
+            -o with_gui_client=False \
+            -s build_type=Release
+
+      - name: Configure CMake
+        run: |
+          cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build FPTN client
+        run: |
+          cmake --build build \
+            --target fptn-client-cli \
+            --config Release
+
+      - name: Verify FPTN binary
+        run: |
+          test -x build/src/fptn-client/fptn-client-cli
+          build/src/fptn-client/fptn-client-cli --version
+
+      - name: Prepare RPM sources
+        run: |
+          mkdir -p "$HOME/rpmbuild/SOURCES"
+
+          cp build/src/fptn-client/fptn-client-cli \
+            "$HOME/rpmbuild/SOURCES/fptn-client-cli"
+
+          cp deploy/linux/rpm/client.conf \
+            "$HOME/rpmbuild/SOURCES/client.conf"
+
+          cp deploy/linux/rpm/fptn-client.service \
+            "$HOME/rpmbuild/SOURCES/fptn-client.service"
+
+          cp deploy/linux/rpm/fptn-resolv-heal \
+            "$HOME/rpmbuild/SOURCES/fptn-resolv-heal"
+
+          cp deploy/linux/rpm/fptn-resolv-heal.service \
+            "$HOME/rpmbuild/SOURCES/fptn-resolv-heal.service"
+
+      - name: Build RPM
+        run: |
+          rpmbuild \
+            -bb \
+            --define "_sourcedir $HOME/rpmbuild/SOURCES" \
+            deploy/linux/rpm/fptn-client-cli.spec
+
+      - name: Upload RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: fptn-client-cli-0.4.5
+          path: /root/rpmbuild/RPMS/**/*.rpm
